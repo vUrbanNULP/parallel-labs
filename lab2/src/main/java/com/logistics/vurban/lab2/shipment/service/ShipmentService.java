@@ -33,11 +33,19 @@ public class ShipmentService {
         Client receiver = clientRepository.findById(request.getReceiverId())
                 .orElseThrow(() -> new ResourceNotFoundException("Receiver not found: " + request.getReceiverId()));
 
+        if (sender.getId().equals(receiver.getId())) {
+            throw new IllegalArgumentException("Sender and Receiver cannot be the same person");
+        }
+
         Warehouse origin = warehouseRepository.findById(request.getOriginWarehouseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Origin Warehouse not found: " + request.getOriginWarehouseId()));
 
         Warehouse destination = warehouseRepository.findById(request.getDestinationWarehouseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Destination Warehouse not found: " + request.getDestinationWarehouseId()));
+
+        if (origin.getId().equals(destination.getId())) {
+            throw new IllegalArgumentException("Origin and Destination warehouse cannot be the same");
+        }
 
         Shipment shipment = new Shipment();
         shipment.setDescription(request.getDescription());
