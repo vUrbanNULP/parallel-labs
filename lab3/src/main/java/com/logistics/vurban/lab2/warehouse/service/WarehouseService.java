@@ -6,13 +6,17 @@ import com.logistics.vurban.lab2.warehouse.dto.WarehouseResponseDTO;
 import com.logistics.vurban.lab2.warehouse.model.Warehouse;
 import com.logistics.vurban.lab2.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class WarehouseService {
     private final WarehouseRepository warehouseRepository;
 
@@ -26,10 +30,8 @@ public class WarehouseService {
         return mapToResponse(savedWarehouse);
     }
 
-    public List<WarehouseResponseDTO> getAllWarehouses() {
-        return warehouseRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public Page<WarehouseResponseDTO> getAllWarehouses(Pageable pageable) {
+        return warehouseRepository.findAll(pageable).map(this::mapToResponse);
     }
 
     public WarehouseResponseDTO getWarehouseById(Long id) {
@@ -46,5 +48,51 @@ public class WarehouseService {
         response.setMaxCapacity(warehouse.getMaxCapacity());
         response.setCurrentLoad(warehouse.getCurrentLoad());
         return response;
+    }
+
+    public WarehouseResponseDTO updateWarehouse(Long id, WarehouseRequestDTO request) {
+        Warehouse existing = warehouseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id: " + id));
+
+        existing.setName(request.getName());
+        existing.setAddress(request.getAddress());
+        existing.setMaxCapacity(request.getMaxCapacity());
+
+        return mapToResponse(warehouseRepository.save(existing));
+    }
+
+    public void deleteWarehouse(Long id) {
+        if (!warehouseRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Warehouse not found with id: " + id);
+        }
+        warehouseRepository.deleteById(id);
+    }
+
+    public void addLoad(Long warehouseId, Double weightToAdd) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found: " + warehouseId));
+
+        if (warehouse.getCurrentLoad() + weightToAdd > warehouse.getMaxCapacity()) {
+            throw new IllegalArgumentException(
+                    String.format("Warehouse '%s' capacity exceeded. Available: %.2f, Tried to add: %.2f",
+                            warehouse.getName(),
+                            (warehouse.getMaxCapacity() - warehouse.getCurrentLoad()),
+                            weightToAdd)
+            );
+        }
+        warehouse.setCurrentLoad(warehouse.getCurrentLoad() + weightToAdd);
+        warehouseRepository.save(warehouse);
+    }
+
+    public void removeLoad(Long warehouseId, Double weightToRemove) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found: " + warehouseId));
+
+        double newLoad = warehouse.getCurrentLoad() - weightToRemove;
+        if (newLoad < 0) {
+            newLoad = 0;
+        }
+        warehouse.setCurrentLoad(newLoad);
+        warehouseRepository.save(warehouse);
     }
 }

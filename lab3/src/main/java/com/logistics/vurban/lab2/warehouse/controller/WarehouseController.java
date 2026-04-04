@@ -5,6 +5,10 @@ import com.logistics.vurban.lab2.warehouse.dto.WarehouseResponseDTO;
 import com.logistics.vurban.lab2.warehouse.service.WarehouseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +27,9 @@ public class WarehouseController {
     }
 
     @GetMapping
-    public List<WarehouseResponseDTO> getAll() {
-        return warehouseService.getAllWarehouses();
+    public Page<WarehouseResponseDTO> getAll(
+            @PageableDefault(sort = "name", direction = Sort.Direction.ASC, size = 10) Pageable pageable) {
+        return warehouseService.getAllWarehouses(pageable);
     }
 
     @GetMapping("/{id}")

@@ -5,6 +5,10 @@ import com.logistics.vurban.lab2.route.dto.RouteResponseDTO;
 import com.logistics.vurban.lab2.route.service.RouteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +27,9 @@ public class RouteController {
     }
 
     @GetMapping
-    public List<RouteResponseDTO> getAll() {
-        return routeService.getAllRoutes();
+    public Page<RouteResponseDTO> getAll(
+            @PageableDefault(sort = "distanceKm", direction = Sort.Direction.DESC, size = 10) Pageable pageable) {
+        return routeService.getAllRoutes(pageable);
     }
 
     @GetMapping("/{id}")

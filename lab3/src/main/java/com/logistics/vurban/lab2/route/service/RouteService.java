@@ -12,13 +12,17 @@ import com.logistics.vurban.lab2.warehouse.dto.WarehouseResponseDTO;
 import com.logistics.vurban.lab2.warehouse.model.Warehouse;
 import com.logistics.vurban.lab2.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class RouteService {
     private final RouteRepository routeRepository;
     private final WarehouseRepository warehouseRepository;
@@ -50,10 +54,8 @@ public class RouteService {
         return mapToResponse(savedRoute);
     }
 
-    public List<RouteResponseDTO> getAllRoutes() {
-        return routeRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public Page<RouteResponseDTO> getAllRoutes(Pageable pageable) {
+        return routeRepository.findAll(pageable).map(this::mapToResponse);
     }
 
     public RouteResponseDTO getRouteById(Long id) {
@@ -94,5 +96,22 @@ public class RouteService {
         response.setAssignedTransport(transDto);
 
         return response;
+    }
+
+    // Тут не змінюються склади та транспорт - це існуючий маршрут, куда там.
+    // Як і у випадку з Shipment цей метод є чисто для підправлення. Для якихось махінацій з маршрутами будуть інші методи
+    public RouteResponseDTO updateRoute(Long id, RouteRequestDTO request) {
+        Route existing = routeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Route not found with id: " + id));
+
+        existing.setDistanceKm(request.getDistanceKm());
+        existing.setEstimatedDurationHours(request.getEstimatedDurationHours());
+
+        return mapToResponse(routeRepository.save(existing));
+    }
+
+    public void deleteRoute(Long id) {
+        if (!routeRepository.existsById(id)) throw new ResourceNotFoundException("Route not found: " + id);
+        routeRepository.deleteById(id);
     }
 }
