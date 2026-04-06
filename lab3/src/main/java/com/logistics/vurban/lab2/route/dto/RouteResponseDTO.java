@@ -4,6 +4,8 @@ import com.logistics.vurban.lab2.transport.dto.TransportResponseDTO;
 import com.logistics.vurban.lab2.warehouse.dto.WarehouseResponseDTO;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class RouteResponseDTO {
     private Long id;
@@ -12,4 +14,6 @@ public class RouteResponseDTO {
     private TransportResponseDTO assignedTransport;
     private Double distanceKm;
     private Integer estimatedDurationHours;
+    private List<Long> shipmentIds;
+    private Boolean isCompleted;
 }

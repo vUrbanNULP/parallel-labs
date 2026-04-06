@@ -3,7 +3,8 @@ package com.logistics.vurban.lab2.common.model;
 public enum Status {
     CREATED,
     IN_TRANSIT,
-    AT_WAREHOUSE,
+    TRANSIT_HUB,
+    READY_FOR_PICKUP,
     DELIVERED,
     CANCELLED
 }

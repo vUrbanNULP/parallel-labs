@@ -16,4 +16,7 @@ public class TransportRequestDTO {
     @NotNull(message = "Load capacity is mandatory")
     @Min(value = 1, message = "Load capacity must be at least 1")
     private Double loadCapacity;
+
+    @NotNull(message = "Is available is mandatory")
+    private Boolean isAvailable = true;
 }

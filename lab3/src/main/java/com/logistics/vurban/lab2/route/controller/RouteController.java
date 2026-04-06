@@ -36,4 +36,26 @@ public class RouteController {
     public RouteResponseDTO getById(@PathVariable Long id) {
         return routeService.getRouteById(id);
     }
+
+    @PutMapping("/{id}")
+    public RouteResponseDTO update(@PathVariable Long id, @Valid @RequestBody RouteRequestDTO request) {
+        return routeService.updateRoute(id, request);
+    }
+
+    @PutMapping("/{id}/load")
+    public RouteResponseDTO load(@PathVariable Long id, @RequestBody List<Long> shipmentIds) {
+        return routeService.loadShipments(id, shipmentIds);
+    }
+
+    @PutMapping("/{id}/complete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void complete(@PathVariable Long id) {
+        routeService.completeRoute(id);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        routeService.deleteRoute(id);
+    }
 }

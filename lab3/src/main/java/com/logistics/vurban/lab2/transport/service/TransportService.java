@@ -58,6 +58,7 @@ public class TransportService {
         existing.setVehicleType(request.getVehicleType());
         existing.setLicensePlate(request.getLicensePlate());
         existing.setLoadCapacity(request.getLoadCapacity());
+        existing.setIsAvailable(request.getIsAvailable());
 
         return mapToResponse(transportRepository.save(existing));
     }

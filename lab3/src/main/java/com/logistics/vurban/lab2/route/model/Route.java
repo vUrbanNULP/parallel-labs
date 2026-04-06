@@ -36,4 +36,7 @@ public class Route {
 
     @Column(nullable = false)
     private Integer estimatedDurationHours;
+
+    @Column(nullable = false)
+    private Boolean isCompleted = false;
 }

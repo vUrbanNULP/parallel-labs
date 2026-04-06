@@ -11,9 +11,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -50,9 +47,18 @@ public class WarehouseService {
         return response;
     }
 
+    @Transactional
     public WarehouseResponseDTO updateWarehouse(Long id, WarehouseRequestDTO request) {
         Warehouse existing = warehouseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id: " + id));
+
+        // --- ДОДАНО: Захист від зменшення місткості нижче поточного завантаження ---
+        if (request.getMaxCapacity() < existing.getCurrentLoad()) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot reduce max capacity to %.2f. Current load is %.2f",
+                            request.getMaxCapacity(), existing.getCurrentLoad())
+            );
+        }
 
         existing.setName(request.getName());
         existing.setAddress(request.getAddress());

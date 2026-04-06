@@ -2,6 +2,7 @@ package com.logistics.vurban.lab2.shipment.model;
 
 import com.logistics.vurban.lab2.client.model.Client;
 import com.logistics.vurban.lab2.common.model.Status;
+import com.logistics.vurban.lab2.route.model.Route;
 import com.logistics.vurban.lab2.warehouse.model.Warehouse;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -52,4 +53,11 @@ public class Shipment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_warehouse_id")
     private Warehouse currentWarehouse;
+
+    @Column(nullable = false)
+    private Double cost;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "route_id")
+    private Route assignedRoute;
 }

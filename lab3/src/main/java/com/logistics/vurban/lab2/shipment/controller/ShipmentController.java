@@ -12,8 +12,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/shipments")
 @RequiredArgsConstructor
@@ -37,6 +35,13 @@ public class ShipmentController {
         return shipmentService.getShipmentById(id);
     }
 
+    @GetMapping("/search")
+    public Page<ShipmentResponseDTO> search(
+            @RequestParam Long clientId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return shipmentService.getClientShipments(clientId, pageable);
+    }
+
     @PutMapping("/{id}")
     public ShipmentResponseDTO update(@PathVariable Long id, @Valid @RequestBody ShipmentRequestDTO request) {
         return shipmentService.updateShipment(id, request);
@@ -47,6 +52,11 @@ public class ShipmentController {
             @PathVariable Long id,
             @RequestParam Long warehouseId) {
         return shipmentService.transferShipment(id, warehouseId);
+    }
+
+    @PutMapping("/{id}/deliver")
+    public ShipmentResponseDTO deliver(@PathVariable Long id) {
+        return shipmentService.deliverShipment(id);
     }
 
     @DeleteMapping("/{id}")

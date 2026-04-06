@@ -36,4 +36,15 @@ public class WarehouseController {
     public WarehouseResponseDTO getById(@PathVariable Long id) {
         return warehouseService.getWarehouseById(id);
     }
+
+    @PutMapping("/{id}")
+    public WarehouseResponseDTO update(@PathVariable Long id, @Valid @RequestBody WarehouseRequestDTO request) {
+        return warehouseService.updateWarehouse(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        warehouseService.deleteWarehouse(id);
+    }
 }

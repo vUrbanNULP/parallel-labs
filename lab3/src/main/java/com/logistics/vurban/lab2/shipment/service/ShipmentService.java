@@ -3,8 +3,11 @@ package com.logistics.vurban.lab2.shipment.service;
 import com.logistics.vurban.lab2.client.dto.ClientResponseDTO;
 import com.logistics.vurban.lab2.client.model.Client;
 import com.logistics.vurban.lab2.client.repository.ClientRepository;
+import com.logistics.vurban.lab2.client.service.ClientService;
 import com.logistics.vurban.lab2.common.exception.ResourceNotFoundException;
 import com.logistics.vurban.lab2.common.model.Status;
+import com.logistics.vurban.lab2.route.model.Route;
+import com.logistics.vurban.lab2.route.repository.RouteRepository;
 import com.logistics.vurban.lab2.shipment.dto.ShipmentRequestDTO;
 import com.logistics.vurban.lab2.shipment.dto.ShipmentResponseDTO;
 import com.logistics.vurban.lab2.shipment.model.Shipment;
@@ -31,8 +34,13 @@ public class ShipmentService {
     private final ClientRepository clientRepository;
     private final WarehouseRepository warehouseRepository;
     private final WarehouseService warehouseService;
+    private final RouteRepository routeRepository;
 
     public ShipmentResponseDTO createShipment(ShipmentRequestDTO request) {
+        if (request.getWeight() <= 0) {
+            throw new IllegalArgumentException("Weight must be greater than zero");
+        }
+
         Client sender = clientRepository.findById(request.getSenderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Sender not found: " + request.getSenderId()));
 
@@ -53,16 +61,21 @@ public class ShipmentService {
             throw new IllegalArgumentException("Origin and Destination warehouse cannot be the same");
         }
 
+        Route route = routeRepository.findFirstByOriginIdAndDestinationIdOrderByDistanceKmAsc(origin.getId(), destination.getId())
+                .orElseThrow(() -> new IllegalArgumentException("No logistics route defined between these warehouses. Cannot calculate price."));
+
+        Double calculatedCost = calculateCost(request.getWeight(), route.getDistanceKm());
+
         warehouseService.addLoad(origin.getId(), request.getWeight());
 
         Shipment shipment = new Shipment();
         shipment.setDescription(request.getDescription());
         shipment.setWeight(request.getWeight());
+        shipment.setCost(calculatedCost);
         shipment.setSender(sender);
         shipment.setReceiver(receiver);
         shipment.setOriginWarehouse(origin);
         shipment.setDestinationWarehouse(destination);
-
         shipment.setCurrentWarehouse(origin);
         shipment.setStatus(Status.CREATED);
         shipment.setTrackingNumber(generateTrackingNumber());
@@ -93,6 +106,7 @@ public class ShipmentService {
         response.setTrackingNumber(shipment.getTrackingNumber());
         response.setDescription(shipment.getDescription());
         response.setWeight(shipment.getWeight());
+        response.setCost(shipment.getCost());
         response.setStatus(shipment.getStatus());
 
         ClientResponseDTO senderDto = new ClientResponseDTO();
@@ -145,11 +159,20 @@ public class ShipmentService {
         return mapToResponse(updatedShipment);
     }
 
+    @Transactional
     public void deleteShipment(Long id) {
-        if (!shipmentRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Shipment not found with id: " + id);
+        Shipment shipment = shipmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment not found with id: " + id));
+
+        if (shipment.getStatus() == Status.IN_TRANSIT || shipment.getStatus() == Status.DELIVERED) {
+            throw new IllegalArgumentException("Cannot cancel shipment that is " + shipment.getStatus());
         }
-        shipmentRepository.deleteById(id);
+
+        if (shipment.getCurrentWarehouse() != null) {
+            warehouseService.removeLoad(shipment.getCurrentWarehouse().getId(), shipment.getWeight());
+        }
+
+        shipmentRepository.delete(shipment);
     }
 
     public ShipmentResponseDTO transferShipment(Long shipmentId, Long newWarehouseId) {
@@ -176,13 +199,52 @@ public class ShipmentService {
         warehouseService.addLoad(newWarehouseId, shipment.getWeight());
 
         shipment.setCurrentWarehouse(newWarehouse);
-        shipment.setStatus(Status.AT_WAREHOUSE);
-
         if (newWarehouse.getId().equals(shipment.getDestinationWarehouse().getId())) {
-            // TODO: коли буду робити клієнта тут дописати
+            shipment.setStatus(Status.READY_FOR_PICKUP);
+        } else {
+            shipment.setStatus(Status.TRANSIT_HUB);
         }
 
         Shipment savedShipment = shipmentRepository.save(shipment);
         return mapToResponse(savedShipment);
+    }
+
+    private Double calculateCost(Double weight, Double distanceKm) {
+        double baseFee = 50.0;        // Базова ставка
+        double weightRate = 2.5;      // Ціна за 1 кг (2.5 грн)
+        double distanceRate = 1.5;    // Ціна за 1 км (1.5 грн)
+
+        return baseFee + (weight * weightRate) + (distanceKm * distanceRate);
+    }
+
+    public Page<ShipmentResponseDTO> getClientShipments(Long clientId, Pageable pageable) {
+        if (!clientRepository.existsById(clientId)) {
+            throw new ResourceNotFoundException("Client not found: " + clientId);
+        }
+
+        return shipmentRepository.findBySenderIdOrReceiverId(clientId, clientId, pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Transactional
+    public ShipmentResponseDTO deliverShipment(Long shipmentId) {
+        Shipment shipment = shipmentRepository.findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment not found: " + shipmentId));
+
+        if (shipment.getStatus() != Status.READY_FOR_PICKUP) {
+            throw new IllegalArgumentException("Shipment cannot be delivered. Current status: " + shipment.getStatus());
+        }
+
+        if (shipment.getCurrentWarehouse() == null ||
+                !shipment.getCurrentWarehouse().getId().equals(shipment.getDestinationWarehouse().getId())) {
+            throw new IllegalArgumentException("Shipment has not reached the destination warehouse yet.");
+        }
+
+        warehouseService.removeLoad(shipment.getCurrentWarehouse().getId(), shipment.getWeight());
+
+        shipment.setCurrentWarehouse(null);
+        shipment.setStatus(Status.DELIVERED);
+
+        return mapToResponse(shipmentRepository.save(shipment));
     }
 }

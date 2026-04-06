@@ -18,4 +18,5 @@ public class ShipmentResponseDTO {
     private WarehouseResponseDTO originWarehouse;
     private WarehouseResponseDTO destinationWarehouse;
     private WarehouseResponseDTO currentWarehouse;
+    private Double cost;
 }
