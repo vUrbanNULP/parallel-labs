@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            # Routes Service
+            - id: routes-service-api
+              uri: ${ROUTES_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/warehouses/**, /api/routes/**, /api/transports/**, /api/trips/**, /api/analytics/warehouses
+
+            # Shipment Service
+            - id: shipment-service-api
+              uri: ${SHIPMENT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/shipments/**, /api/clients/**, /api/analytics/finance, /api/analytics/efficiency
+
+            # Tracking Service
+            - id: tracking-service-api
+              uri: ${TRACKING_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/tracking/**

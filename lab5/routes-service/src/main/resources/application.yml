@@ -1,0 +1,36 @@
+server:
+    port: 8081
+spring:
+    application:
+        name: logistics-service
+    datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+    jpa:
+        hibernate:
+            ddl-auto: update
+    cache:
+        type: redis
+    data:
+        redis:
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6337}
+
+resilience4j:
+    circuitbreaker:
+        instances:
+            trackingService:
+                slidingWindowSize: 10
+                failureRateThreshold: 50
+                waitDurationInOpenState: 10000ms
+                registerHealthIndicator: true
+            coreService:
+                slidingWindowSize: 5
+                failureRateThreshold: 50
+                waitDurationInOpenState: 15000ms
+                registerHealthIndicator: true
+    timelimiter:
+        instances:
+            trackingService:
+                timeoutDuration: 2s

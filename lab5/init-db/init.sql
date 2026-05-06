@@ -1,0 +1,3 @@
+CREATE DATABASE logistics_routes_db;
+CREATE DATABASE logistics_shipment_db;
+CREATE DATABASE logistics_tracking_db;

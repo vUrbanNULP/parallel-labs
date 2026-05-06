@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # 1. База даних PostgreSQL
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - logistics-network
+
+  # 2. Кеш-сервер Redis
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6337:6379"
+    networks:
+      - logistics-network
+
+  # 3. Tracking Service
+  tracking-service:
+    build: ./tracking-service
+    container_name: tracking-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres-db:5432/logistics_tracking_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      - postgres-db
+    networks:
+      - logistics-network
+
+  # 4. Routes Service (з Redis)
+  routes-service:
+    build: ./routes-service
+    container_name: routes-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres-db:5432/logistics_routes_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+      SHIPMENT_SERVICE_URL: http://shipment-service:8082
+      TRACKING_SERVICE_URL: http://tracking-service:8083
+    depends_on:
+      - postgres-db
+      - redis-cache
+    networks:
+      - logistics-network
+
+  # 5. Shipment Service
+  shipment-service:
+    build: ./shipment-service
+    container_name: shipment-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres-db:5432/logistics_shipment_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      ROUTES_SERVICE_URL: http://routes-service:8081
+      TRACKING_SERVICE_URL: http://tracking-service:8083
+    depends_on:
+      - postgres-db
+      - routes-service
+    networks:
+      - logistics-network
+
+  # 6. API Gateway
+  gateway-service:
+    build: ./gateway-service
+    container_name: gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      ROUTES_SERVICE_URL: http://routes-service:8081
+      SHIPMENT_SERVICE_URL: http://shipment-service:8082
+      TRACKING_SERVICE_URL: http://tracking-service:8083
+    depends_on:
+      - routes-service
+      - shipment-service
+      - tracking-service
+    networks:
+      - logistics-network
+
+networks:
+  logistics-network:
+    driver: bridge
