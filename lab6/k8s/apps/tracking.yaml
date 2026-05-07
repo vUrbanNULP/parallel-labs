@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracking-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracking-service
+  template:
+    metadata:
+      labels:
+        app: tracking-service
+    spec:
+      containers:
+        - name: tracking-service
+          image: tracking-service:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - secretRef:
+                name: logistics-secrets
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: logistics-config
+                  key: TRACKING_DB_URL
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: logistics-secrets
+                  key: db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logistics-secrets
+                  key: db-password
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8083
+            initialDelaySeconds: 600
+            periodSeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracking-service
+spec:
+  type: ClusterIP
+  selector:
+    app: tracking-service
+  ports:
+    - protocol: TCP
+      port: 8083
+      targetPort: 8083

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipment-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shipment-service
+  template:
+    metadata:
+      labels:
+        app: shipment-service
+    spec:
+      containers:
+        - name: shipment-service
+          image: shipment-service:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - secretRef:
+                name: logistics-secrets
+            - configMapRef:
+                name: logistics-config
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: logistics-config
+                  key: SHIPMENT_DB_URL
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: logistics-secrets
+                  key: db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logistics-secrets
+                  key: db-password
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 600
+            periodSeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipment-service
+spec:
+  type: ClusterIP
+  selector:
+    app: shipment-service
+  ports:
+    - protocol: TCP
+      port: 8082
+      targetPort: 8082

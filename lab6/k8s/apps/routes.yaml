@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: routes-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: routes-service
+  template:
+    metadata:
+      labels:
+        app: routes-service
+    spec:
+      containers:
+        - name: routes-service
+          image: routes-service:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - secretRef:
+                name: logistics-secrets
+            - configMapRef:
+                name: logistics-config
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: logistics-config
+                  key: ROUTES_DB_URL
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: logistics-secrets
+                  key: db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logistics-secrets
+                  key: db-password
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 600
+            periodSeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: routes-service
+spec:
+  type: ClusterIP
+  selector:
+    app: routes-service
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
